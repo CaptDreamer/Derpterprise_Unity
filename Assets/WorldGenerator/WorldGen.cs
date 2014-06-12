@@ -8,9 +8,12 @@ public class WorldGen : MonoBehaviour {
 	public GameObject dot; 
 	public GameObject dotCorner; 
 	public GameObject line;
+	public GameObject poly;
 
 	public static int width;
 	int height;
+
+	private IIslandService IslandHandler;
 
 	public int DotCount;
 
@@ -40,7 +43,8 @@ public class WorldGen : MonoBehaviour {
 		CleanUpGraph(true);
 
 		//Display the points
-		DisplayPoints();
+		//DisplayPoints();
+		DisplayPoly ();
 	}
 	
 	// Update is called once per frame
@@ -50,6 +54,10 @@ public class WorldGen : MonoBehaviour {
 
 	void CreateVoronoiGraph() 
 	{
+		int MapX = width;
+		int MapY = height;
+		IslandHandler = new IslandService (MapX, MapY);
+
 		var points = new HashSet<BenTools.Mathematics.Vector>();
 		for(int i = 0; i < DotCount; i++)
 		{
@@ -136,14 +144,14 @@ public class WorldGen : MonoBehaviour {
 			c2.AddTouches(cntrRight);
 		}
 		
-//		foreach (var c in WorldGen.AppMap.Centers)
-//		{
-//			c.Value.FixBorders();
-//			//c.SetEdgeAreas();
-//			c.Value.OrderCorners();
-//		}
+		foreach (var c in WorldGen.AppMap.Centers)
+		{
+			c.Value.FixBorders();
+			//c.SetEdgeAreas();
+			c.Value.OrderCorners();
+		}
 		
-		//IslandHandler.CreateIsland();
+		IslandHandler.CreateIsland();
 	}
 
 	private bool newFix(VoronoiEdge edge)
@@ -251,45 +259,7 @@ public class WorldGen : MonoBehaviour {
 								edge.VVertexB = new BenTools.Mathematics.Vector(WorldGen.width, i);
 							
 						}
-					}
-					
-					//if (x3 < WorldGen.width / 4)
-					//{
-					//    i = b;
-					//    if (i > 0 && i < width)
-					//        edge.VVertexB = new BenTools.Mathematics.Vector(0, i);
-					
-					//    //left
-					//}
-					
-					//if (x3 > WorldGen.width * 3 / 4)
-					//{
-					//    i = (WorldGen.width * slope) + b;
-					//    if (i > 0 && i < width)
-					//        edge.VVertexB = new BenTools.Mathematics.Vector(WorldGen.width, i);
-					
-					//    //right
-					//}
-					
-					//if (y3 > WorldGen.width * 3 / 4)
-					//{
-					//    i = (WorldGen.width - b) / slope;
-					//    if (i > 0 && i < width)
-					//        edge.VVertexB = new BenTools.Mathematics.Vector(i, WorldGen.width);
-					
-					//    //bottom
-					//}
-					
-					//if (y3 < WorldGen.width / 4)
-					//{
-					//    i = (-b / slope);
-					//    if (i > 0 && i < width)
-					//        edge.VVertexB = new BenTools.Mathematics.Vector(i, 0);
-					
-					//    //top
-					//}
-					
-					
+					}				
 				}
 			}
 			return true;
@@ -317,6 +287,12 @@ public class WorldGen : MonoBehaviour {
 		{
 			//Debug.Log("Displaying Corner");
 			Vector2 point = c.Point;
+			if(float.IsNaN(point.x) || float.IsNaN(point.y)) 
+			{
+				Debug.Log("Corner Error - X: " + point.x + " Y: " + point.y);
+				c.Point.Set(0, 0);
+				point = c.Point;
+			}
 			GameObject CornerGO = (GameObject)Instantiate(dotCorner,new Vector3(point.x,point.y, 0),Quaternion.identity);
 			CornerGO.name = "Corner: " + c.Point;
 		}
@@ -324,19 +300,65 @@ public class WorldGen : MonoBehaviour {
 		foreach (Edge ed in WorldGen.AppMap.Edges.Values)
 		{
 			Vector2 point = ed.Point;
+			if(float.IsNaN(point.x) || float.IsNaN(point.y)) 
+			{
+				Debug.Log("Line Error - X: " + point.x + " Y: " + point.y);
+				ed.Point.Set(0, 0);
+				point = ed.Point;
+			}
 			GameObject lineGO = (GameObject)Instantiate(line, new Vector3(point.x,point.y,10),Quaternion.identity);
 			lineGO.name = "Edge: " + ed.Point;
 			LineRenderer lr = lineGO.GetComponent<LineRenderer>();
 			lr.SetPosition(0,new Vector3(ed.VoronoiStart.Point.x,ed.VoronoiStart.Point.y,10));
 			lr.SetPosition(1,new Vector3(ed.VoronoiEnd.Point.x,ed.VoronoiEnd.Point.y,10));
 		}
+	}
 
-//		foreach(VoronoiEdge edge in voronoiMap.Edges)
-//		{
-//			Vector2 pointOne = new Vector2((float)edge.VVertexA[0],(float)edge.VVertexA[1]);
-//			Vector2 pointTwo = new Vector2((float)edge.VVertexB[0],(float)edge.VVertexB[1]);
-//			Instantiate(dot,new Vector3(pointOne.x,pointOne.y, 0),Quaternion.identity);
-//			Instantiate(dot,new Vector3(pointTwo.x,pointTwo.y, 0),Quaternion.identity);
-//		}
+	void DisplayPoly()
+	{
+		foreach(Center c in WorldGen.AppMap.Centers.Values)
+		{
+			int cCount = 0;
+			float eleAvg = 0;
+			foreach (Corner corner in c.Corners)
+			{
+				eleAvg += (float)corner.Elevation * -100;
+				cCount++;
+			}
+			eleAvg = (eleAvg / cCount);
+			if (float.IsInfinity(eleAvg) || eleAvg < -100)
+				eleAvg = -100;
+
+			GameObject polyGO = (GameObject)Instantiate(poly,new Vector3(c.Point.x, c.Point.y, eleAvg), Quaternion.identity);
+			Mesh mesh = new Mesh();
+			polyGO.GetComponent<MeshFilter>().mesh = mesh;
+
+			Vector3[] verts = new Vector3[c.Corners.Count];
+			Vector2[] vert2d = new Vector2[c.Corners.Count];
+
+			int cornerCount = 0;
+			foreach(Corner corner in c.Corners)
+			{
+				verts[cornerCount] = new Vector3(corner.Point.x - c.Point.x, corner.Point.y - c.Point.y, (float)c.Elevation+10);
+				vert2d[cornerCount] = new Vector2(corner.Point.x, corner.Point.y);
+				cornerCount++;
+			}
+
+			Triangulator tr = new Triangulator(vert2d);
+			int[] tris = tr.Triangulate();
+
+			Color newColor = c.PolygonBrush;
+			//Debug.Log(c.Biome + " " + newColor);
+			polyGO.renderer.material.color = newColor;
+
+			mesh.vertices = verts;
+			mesh.uv = vert2d;
+			mesh.triangles = tris;
+			mesh.RecalculateNormals();
+			mesh.RecalculateBounds();
+
+			mesh.name = "Mesh: " + c.Point;
+			polyGO.name = c.Biome + ", " + c.Elevation;
+		}
 	}
 }

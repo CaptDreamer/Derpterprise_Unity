@@ -73,6 +73,7 @@ public class MapItemFactory : IFactory
 	
 	public Edge EdgeFactory(Corner begin, Corner end, Center Left, Center Right)
 	{
+		//Debug.Log (begin + ", " + end + ", " + Left + ", " + Right);
 		Vector2 p = new Vector2((begin.Point.x + end.Point.x) / 2, (begin.Point.x + end.Point.x) / 2);
 		int hash = p.GetHashCode();
 		if (WorldGen.AppMap.Edges.ContainsKey(hash))
@@ -82,7 +83,7 @@ public class MapItemFactory : IFactory
 		else
 		{
 			var nc = new Edge(begin,end,Left,Right);
-			Debug.Log(nc.Key);
+			//Debug.Log(nc.Key);
 			WorldGen.AppMap.Edges.Add(nc.Key, nc);
 			return nc;
 		}
