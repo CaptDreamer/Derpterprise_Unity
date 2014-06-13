@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 
+
+
 public class Center : IEquatable<Center>, IMapItem {
 
 	public int Index { get; set; }
@@ -33,7 +35,7 @@ public class Center : IEquatable<Center>, IMapItem {
 			if (value == "Ocean")
 				PolygonBrush = new Color(  54/255f,  54/255f, 97/255f, 255/255f );
 			if (value == "ShallowWater")
-				PolygonBrush = Color.blue; //new Color(74/255f,74/255f,117/255f,255/255f);
+				PolygonBrush = new Color(74/255f,74/255f,117/255f,255/255f);
 			else if (value == "Marsh")
 				PolygonBrush = new Color(196/255f,204/255f,187/255f ,255/255f);
 			else if (value == "Lake")
@@ -65,7 +67,7 @@ public class Center : IEquatable<Center>, IMapItem {
 			else if (value == "TropicalSeasonalForest")
 				PolygonBrush = new Color(85/255f,139/255f,85/255f,255/255f);
 			else if (value == "SubtropicalDesert")
-				PolygonBrush = Color.green; //new Color(172/255f,159/255f,139/255f,255/255f);
+				PolygonBrush = new Color(172/255f,159/255f,139/255f,255/255f);
 
 			_biome = value;
 		}
@@ -88,33 +90,15 @@ public class Center : IEquatable<Center>, IMapItem {
 		Water = Coast = Ocean = Border = false;
 		Elevation = Moisture = 0.0d;
 
-		Neighbours = new HashSet<Center>();
-		Borders = new HashSet<Edge>();
-		Corners = new HashSet<Corner>();
+		Neighbours = new HashSet<Center>(new CenterComparer());
+		Borders = new HashSet<Edge>(new EdgeComparer());
+		Corners = new HashSet<Corner>(new CornerComparer());
 	}
 
 	#region Methods
 	public bool Equals(Center other)
 	{
 		return this.Point == other.Point;
-	}
-
-	public void AddBorder(Edge edge)
-	{
-		if(!Borders.Contains(edge))
-			Borders.Add (edge);
-	}
-
-	public void AddCorner(Corner corner)
-	{
-		if (!Corners.Contains(corner))
-			Corners.Add (corner);
-	}
-
-	public void AddNeighbour(Center center)
-	{
-		if (!Neighbours.Contains(center))
-			Neighbours.Add(center);
 	}
 
 	public void OrderCorners()
@@ -189,46 +173,52 @@ public class Center : IEquatable<Center>, IMapItem {
 
 	public void SetBiome()
 	{
-		if (Ocean && Elevation > -0.1d)
+		if (Ocean && Elevation < -0.1d)
 		{
-			Biome = "ShallowWater";
-		}
-		else if (Water)
-		{
-			if (Elevation < 0.1) Biome = "Marsh";
-			if (Elevation > 0.8) Biome = "Ice";
-			Biome = "Lake";
-		}
-		else if (Coast)
-		{
-			Biome = "Beach";
-		}
-		else if (Elevation > 0.8)
-		{
-			if (Moisture > 0.50) Biome = "Snow";
-			else if (Moisture > 0.33) Biome = "Tundra";
-			else if (Moisture > 0.16) Biome = "Bare";
-			else Biome = "Scorched";
-		}
-		else if (Elevation > 0.6)
-		{
-			if (Moisture > 0.66) Biome = "Taiga";
-			else if (Moisture > 0.33) Biome = "Shrubland";
-			else Biome = "TemperateDesert";
-		}
-		else if (Elevation > 0.3)
-		{
-			if (Moisture > 0.83) Biome = "TemperateRainForest";
-			else if (Moisture > 0.50) Biome = "TemperateDeciduousForest";
-			else if (Moisture > 0.16) Biome = "Grassland";
-			else Biome = "TemperateDesert";
+			Biome = "Ocean";
 		}
 		else
-		{
-			if (Moisture > 0.66) Biome = "TropicalRainForest";
-			else if (Moisture > 0.33) Biome = "TropicalSeasonalForest";
-			else if (Moisture > 0.16) Biome = "Grassland";
-			else Biome = "SubtropicalDesert";
-		}
+			if (Ocean && Elevation > -0.1d)
+			{
+				Biome = "ShallowWater";
+			}
+			else if (Water)
+			{
+				if (Elevation < 0.1) Biome = "Marsh";
+				if (Elevation > 0.8) Biome = "Ice";
+				Biome = "Lake";
+			}
+			else if (Coast)
+			{
+				Biome = "Beach";
+			}
+			else if (Elevation > 0.8)
+			{
+				if (Moisture > 0.50) Biome = "Snow";
+				else if (Moisture > 0.33) Biome = "Tundra";
+				else if (Moisture > 0.16) Biome = "Bare";
+				else Biome = "Scorched";
+			}
+			else if (Elevation > 0.6)
+			{
+				if (Moisture > 0.66) Biome = "Taiga";
+				else if (Moisture > 0.33) Biome = "Shrubland";
+				else Biome = "TemperateDesert";
+			}
+			else if (Elevation > 0.3)
+			{
+				if (Moisture > 0.83) Biome = "TemperateRainForest";
+				else if (Moisture > 0.50) Biome = "TemperateDeciduousForest";
+				else if (Moisture > 0.16) Biome = "Grassland";
+				else Biome = "TemperateDesert";
+			}
+			else
+			{
+				if (Moisture > 0.66) Biome = "TropicalRainForest";
+				else if (Moisture > 0.33) Biome = "TropicalSeasonalForest";
+				else if (Moisture > 0.16) Biome = "Grassland";
+				else Biome = "SubtropicalDesert";
+			}
+		
 	}
 }

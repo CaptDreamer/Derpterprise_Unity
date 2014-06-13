@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using System;
 
-public class Edge 
+
+public class Edge : IEquatable<Edge>, IMapItem
 {
 	public Edge(Corner begin, Corner end, Center left, Center right)
 	{
