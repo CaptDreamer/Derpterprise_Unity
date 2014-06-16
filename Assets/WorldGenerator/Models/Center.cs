@@ -34,7 +34,7 @@ public class Center : IEquatable<Center>, IMapItem {
 		{
 			if (value == "Ocean")
 				PolygonBrush = new Color(  54/255f,  54/255f, 97/255f, 255/255f );
-			if (value == "ShallowWater")
+			if (value == "Ocean Floor")
 				PolygonBrush = new Color(74/255f,74/255f,117/255f,255/255f);
 			else if (value == "Marsh")
 				PolygonBrush = new Color(196/255f,204/255f,187/255f ,255/255f);
@@ -166,7 +166,52 @@ public class Center : IEquatable<Center>, IMapItem {
 		}
 	}
 
+	public bool Contains(Vector2 point)
+	{
+		float minX = 1000;
+		float minY = 1000;
+		float maxX = 0;
+		float maxY = 0;
 
+		float testx = point.x;
+		float testy = point.y;
+
+		float[] vertx = new float[Corners.Count];
+		float[] verty = new float[Corners.Count];
+
+		int cornCount = 0;
+		foreach(Corner corner in Corners)
+		{
+			vertx[cornCount] = corner.Point.x;
+			verty[cornCount] = corner.Point.y;
+			cornCount++;
+
+			if(corner.Point.x < minX)
+				minX = corner.Point.x;
+			if(corner.Point.x > maxX)
+				maxX = corner.Point.x;
+			if(corner.Point.y < minY)
+				minY = corner.Point.y;
+			if(corner.Point.y > maxY)
+				maxY = corner.Point.y;
+		}
+		if(point.x < minX || point.x > maxX ||point.y < minY || point.y > maxY)
+		{
+			return false;
+		}
+		int nvert = Corners.Count;
+		int i = 0;
+		int j = 0;
+		bool c = false;
+		for (i = 0, j = nvert - 1; i < nvert; j = i++)
+		{
+			if( ((verty[i]>testy) != (verty[j]>testy)) &&
+			   (testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) )
+				c = !c;
+		}
+
+		return c;
+	}
 
 
 	#endregion
@@ -180,7 +225,7 @@ public class Center : IEquatable<Center>, IMapItem {
 		else
 			if (Ocean && Elevation > -0.1d)
 			{
-				Biome = "ShallowWater";
+				Biome = "OceanFloor";
 			}
 			else if (Water)
 			{

@@ -5,10 +5,9 @@ using BenTools.Mathematics;
 
 public class WorldGen : MonoBehaviour {
 
-	public GameObject dot; 
-	public GameObject dotCorner; 
-	public GameObject line;
-	public GameObject poly;
+	public GameObject chunk;
+	public GameObject[,,] chunks;
+	public int chunkSize=16;
 
 	public static int width;
 	int height;
@@ -19,6 +18,7 @@ public class WorldGen : MonoBehaviour {
 	public int DotCount;
 
 	VoronoiGraph voronoiMap;
+	GridMap fullMap;
 
 	public static Map AppMap { get; set; }
 
@@ -31,29 +31,148 @@ public class WorldGen : MonoBehaviour {
 		
 	// Use this for initialization
 	void Start () {
-		//initialize
 		width = 250;
 		height = width;
 		WorldGen.AppMap = null;
 		WorldGen.AppMap = new Map();
-		
-		//Create a Voronoi Graph
 		CreateVoronoiGraph();
-
-		//Create the polygon class from the graph
 		CleanUpGraph(true);
-
-		//Display the points
-		//DisplayPoints();
-		DisplayPoly ();
-
-		// Display Rivers
-		DisplayRivers();
+		CreateGridMap ();
+		ExtraChunky ();
 	}
-	
-	// Update is called once per frame
-	void Update () {
+
+	void ExtraChunky()
+	{
+		chunks=new GameObject[Mathf.FloorToInt(width/chunkSize),
+		                      Mathf.FloorToInt(width/chunkSize),
+		                      Mathf.FloorToInt(50/chunkSize)];
 		
+		for (int x=0; x<chunks.GetLength(0); x++)
+		{
+			for (int y=0; y<chunks.GetLength(1); y++)
+			{
+				for (int z=0; z<chunks.GetLength(2); z++)
+				{
+					chunks[x,y,z]= Instantiate(chunk,
+					                           new Vector3(x*chunkSize,y*chunkSize,z*chunkSize),
+					                           new Quaternion(0,0,0,0)) as GameObject;
+					
+					Chunk newChunkScript= chunks[x,y,z].GetComponent("Chunk") as Chunk;
+			   
+					newChunkScript.map=fullMap;
+					newChunkScript.chunkSize=chunkSize;
+					newChunkScript.chunkX=x*chunkSize;
+					newChunkScript.chunkY=y*chunkSize;
+					newChunkScript.chunkZ=z*chunkSize;
+					newChunkScript.GenerateMesh();
+				}
+			}
+		}
+	}
+
+	void CreateGridMap()
+	{
+		fullMap = new GridMap (MapX, MapY);
+		List<Tile> empty = new List<Tile> ();
+
+		for(int i = 0; i < MapX; i++)
+		{
+			for(int j = 0; j < MapY; j++)
+			{	
+				fullMap.map[i,j,0].Point = new Vector2(i,j);
+				empty.Add(fullMap.map[i,j,0]);
+				Vector3 p = new Vector3(i, j, 0);
+				foreach(Center c in WorldGen.AppMap.Centers.Values)
+				{
+					if(c.Contains(p))
+					{
+						fullMap.map[i,j,0].Biome = c.Biome;
+						fullMap.map[i,j,0].Color = c.PolygonBrush;
+						fullMap.map[i,j,0].Elevation = (int)(c.Elevation * 50);
+						empty.Remove(fullMap.map[i,j,0]);
+						break;
+					}
+				}
+			}
+		}
+
+		foreach(Tile tile in empty)
+		{
+			int countX = ((int)tile.Point.x + 1) < MapX ? (int)tile.Point.x + 1 : MapX-1;
+			int countY = ((int)tile.Point.y + 1) < MapY ? (int)tile.Point.y + 1 : MapY-1;
+			int countL = ((int)tile.Point.x - 1) >= 0 ? (int)tile.Point.x - 1 : 0;
+			int countD = ((int)tile.Point.y - 1) >= 0 ? (int)tile.Point.y - 1 : 0;
+
+			while(tile.Biome == "Empty")
+			{
+				if(fullMap.map[countX,countY,0].Biome != "Empty")
+				{
+					tile.Biome = fullMap.map[countX,countY,0].Biome;
+					tile.Color = fullMap.map[countX,countY,0].Color;
+					tile.Elevation = fullMap.map[countX,countY,0].Elevation;
+				} else if (fullMap.map[countX,countD,0].Biome != "Empty") {
+					tile.Biome = fullMap.map[countX,countD,0].Biome;
+					tile.Color = fullMap.map[countX,countD,0].Color;
+					tile.Elevation = fullMap.map[countX,countD,0].Elevation;
+				} else if (fullMap.map[countL,countY,0].Biome != "Empty") {
+					tile.Biome = fullMap.map[countL,countY,0].Biome;
+					tile.Color = fullMap.map[countL,countY,0].Color;
+					tile.Elevation = fullMap.map[countL,countY,0].Elevation;
+				} else if (fullMap.map[countL,countD,0].Biome != "Empty") {
+					tile.Biome = fullMap.map[countL,countD,0].Biome;
+					tile.Color = fullMap.map[countL,countD,0].Color;
+					tile.Elevation = fullMap.map[countL,countD,0].Elevation;
+				}
+
+				countX = (countX + 1) < MapX ? countX + 1 : MapX-1;
+				countY = (countY + 1) < MapY ? countY + 1 : MapY-1;
+				countL = (countL - 1) >= 0 ? countL - 1 : 0;
+				countD = (countD - 1) >= 0 ? countD - 1 : 0;
+				
+				if(countX == MapX-1 && countY == MapY-1 && countL == 0 && countD == 0)
+					tile.Biome = "Broken";
+			}
+		}
+
+		for(int i = 0; i < MapX; i++)
+		{
+			for(int j = 0; j < MapY; j++)
+			{
+				int elevation = fullMap.map[i,j,0].Elevation;
+				if(elevation > 0)
+				{
+					fullMap.map[i,j,elevation].Biome = fullMap.map[i,j,0].Biome;
+					fullMap.map[i,j,elevation].Point = fullMap.map[i,j,0].Point;
+					fullMap.map[i,j,elevation].Color = fullMap.map[i,j,0].Color;
+					fullMap.map[i,j,elevation].Elevation = fullMap.map[i,j,0].Elevation;
+					for(int z = 0; z < elevation; z++)
+					{
+						fullMap.map[i,j,z].Biome = "Underground";
+						fullMap.map[i,j,z].Color = Color.black;
+					}
+					if (fullMap.map[i,j,elevation].Biome == "OceanFloor")
+					{
+						for(int z = elevation + 1; z <= 25; z++)
+						{
+							fullMap.map[i,j,z].Biome = "Ocean";
+							fullMap.map[i,j,z].Color = Color.blue;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	bool checkIfInside(Vector3 point)
+	{
+		Vector3 direction = new Vector3 (0, 1, 0);
+
+		if(Physics.Raycast(point, direction, Mathf.Infinity) &&
+		   Physics.Raycast(point, -direction, Mathf.Infinity)) {
+			return true;
+		}
+
+		else return false;
 	}
 
 	void CreateVoronoiGraph() 
@@ -164,10 +283,7 @@ public class WorldGen : MonoBehaviour {
 				q.Point = point;
 			}
 		}
-		
-		//c.Value.FixBorders();
-		//c.SetEdgeAreas();
-		//c.Value.OrderCorners();
+
 		IslandHandler.CreateIsland();
 	}
 
@@ -289,122 +405,5 @@ public class WorldGen : MonoBehaviour {
 		if (x == double.NaN || y == double.NaN)
 			return false;
 		return (x > 0 && x < MapX) && (y > 0 && y < MapY);
-	}
-
-	void DisplayPoints()
-	{
-		//Debug.Log("Starting Display");
-		foreach (Center o in WorldGen.AppMap.Centers.Values)
-		{
-			//Debug.Log("Displaying Center");
-			Vector2 point = o.Point;
-			GameObject centerGO = (GameObject)Instantiate(dot,new Vector3(point.x,point.y, 0),Quaternion.identity);
-			centerGO.name = "Center: " + o.Point;
-		}
-		
-		foreach (Corner c in WorldGen.AppMap.Corners.Values)
-		{
-			//Debug.Log("Displaying Corner");
-			Vector2 point = c.Point;
-			if(float.IsNaN(point.x) || float.IsNaN(point.y)) 
-			{
-				Debug.Log("Corner Error - X: " + point.x + " Y: " + point.y);
-				c.Point.Set(0, 0);
-				point = c.Point;
-			}
-			GameObject CornerGO = (GameObject)Instantiate(dotCorner,new Vector3(point.x,point.y, 0),Quaternion.identity);
-			CornerGO.name = "Corner: " + c.Point;
-		}
-		
-		foreach (Edge ed in WorldGen.AppMap.Edges.Values)
-		{
-			Vector2 point = ed.Point;
-			if(float.IsNaN(point.x) || float.IsNaN(point.y)) 
-			{
-				Debug.Log("Line Error - X: " + point.x + " Y: " + point.y);
-				ed.Point.Set(0, 0);
-				point = ed.Point;
-			}
-			GameObject lineGO = (GameObject)Instantiate(line, new Vector3(point.x,point.y,10),Quaternion.identity);
-			lineGO.name = "Edge: " + ed.Point;
-			LineRenderer lr = lineGO.GetComponent<LineRenderer>();
-			lr.SetPosition(0,new Vector3(ed.VoronoiStart.Point.x,ed.VoronoiStart.Point.y,10));
-			lr.SetPosition(1,new Vector3(ed.VoronoiEnd.Point.x,ed.VoronoiEnd.Point.y,10));
-		}
-	}
-
-	void DisplayPoly()
-	{
-		foreach(Center c in WorldGen.AppMap.Centers.Values)
-		{
-//			if(c.Point.x < 0 || c.Point.x > MapX || c.Point.y < 0 || c.Point.y > MapY)
-//				throw new UnityException();
-
-			int elevation = (int)(c.Elevation * 50);
-			//Debug.Log(elevation);
-
-			GameObject polyGO = (GameObject)Instantiate(poly,new Vector3(c.Point.x, c.Point.y, -elevation), Quaternion.identity);
-			Mesh mesh = new Mesh();
-			polyGO.GetComponent<MeshFilter>().mesh = mesh;
-
-			Vector3[] verts = new Vector3[c.Corners.Count];
-			Vector2[] vert2d = new Vector2[c.Corners.Count];
-
-			int cornerCount = 0;
-			foreach(Corner corner in c.Corners)
-			{
-//				if(corner.Point.x < 0 || corner.Point.x > MapX || corner.Point.y < 0 || corner.Point.y > MapY)
-//					throw new UnityException();
-				verts[cornerCount] = new Vector3(corner.Point.x - c.Point.x, corner.Point.y - c.Point.y, -elevation);
-				vert2d[cornerCount] = new Vector2(corner.Point.x, corner.Point.y);
-				cornerCount++;
-			}
-
-			Triangulator tr = new Triangulator(vert2d);
-			int[] tris = tr.Triangulate();
-
-			Color newColor = c.PolygonBrush;
-			//Debug.Log(c.Biome + " " + newColor);
-			polyGO.renderer.material.color = newColor;
-
-			mesh.vertices = verts;
-			mesh.uv = vert2d;
-			mesh.triangles = tris;
-			mesh.RecalculateNormals();
-			mesh.RecalculateBounds();
-
-			mesh.name = "Mesh: " + c.Point;
-			string biome;
-			if (c.Ocean)
-				polyGO.name = "Ocean, " + elevation;
-			else
-				polyGO.name = c.Biome + ", " + elevation;
-		}
-	}
-
-	void DisplayRivers()
-	{
-		foreach (Edge ed in WorldGen.AppMap.Edges.Values)
-		{
-			if (ed.River > 0)
-			{
-				Vector2 point = ed.Point;
-				if(float.IsNaN(point.x) || float.IsNaN(point.y)) 
-				{
-					Debug.Log("Line Error - X: " + point.x + " Y: " + point.y);
-					ed.Point.Set(0, 0);
-					point = ed.Point;
-				}
-				GameObject lineGO = (GameObject)Instantiate(line, new Vector3(point.x,point.y,-150),Quaternion.identity);
-				lineGO.name = "River: " + ed.Point;
-				LineRenderer lr = lineGO.GetComponent<LineRenderer>();
-				lr.SetPosition(0,new Vector3(ed.VoronoiStart.Point.x,ed.VoronoiStart.Point.y,-150));
-				lr.SetPosition(1,new Vector3(ed.VoronoiEnd.Point.x,ed.VoronoiEnd.Point.y,-150));
-				lr.SetWidth(ed.River, ed.River);
-				lr.SetColors(Color.blue, Color.blue);
-				lr.material = new Material (Shader.Find("Particles/Alpha Blended"));
-				lr.material.color = Color.blue;
-			}
-		}
 	}
 }

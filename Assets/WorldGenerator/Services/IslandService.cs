@@ -11,8 +11,6 @@ public interface IIslandService
 
 public class IslandService : IIslandService 
 {
-	private double MapMaxHeight = 0.0d;
-	private double MapDeepest = 1.0d;
 	private int MapX, MapY;
 
 	public IslandService(int mapX, int mapY)
@@ -50,15 +48,8 @@ public class IslandService : IIslandService
 		CreateRivers ();
 
 		CalculateCornerMoisture ();
-
-		RedistributeMoisture();
 		
 		Smooth1();
-
-		FixElevations();
-
-
-
 
 		foreach (Center c in WorldGen.AppMap.Centers.Values)
 		{
@@ -70,6 +61,8 @@ public class IslandService : IIslandService
 
 			c.SetBiome();
 		}
+
+		FixElevations();
 	}
 
 	private void FixElevations()
@@ -78,32 +71,49 @@ public class IslandService : IIslandService
 		{
 			if(c.Ocean)
 			{
-				int elevation = (int)(c.Elevation * 50);
-				Debug.Log("Ocean: " + elevation + ", " + c.Elevation);
-				if(elevation > 25)
+				int ele = (int)(c.Elevation * 50);
+				if(ele >= 25)
 				{
-					c.Elevation = 0.5d;
+					c.Elevation = (double)(24d / 50d);
 				}
+			} else if (c.Biome == "Beach") {
+				c.Elevation = (double)(25d / 50d);
 			} else {
-				int elevation = (int)(c.Elevation * 50);
-				Debug.Log("Land: " + elevation + ", " + c.Elevation);
-				if(elevation < 25)
+				int ele = (int)(c.Elevation * 50);
+				if(ele < 25)
 				{
-					c.Elevation = 0.5d;
+					c.Elevation = (double)(26d / 50d);
+				}
+			}
+		}
+
+		foreach(Center c in WorldGen.AppMap.Centers.Values)
+		{
+			if (c.Biome == "Lake")
+			{
+				var adj = c.Neighbours;
+				double lowest = 100d;
+				foreach(Center cent in adj)
+				{
+					if (cent.Elevation < lowest)
+						lowest = cent.Elevation;
+				}
+
+				List<Center> lakes = new List<Center>();
+				lakes.Add(c);
+				foreach(Center lake in c.Neighbours)
+				{
+					if (lake.Biome == "Lake")
+						lakes.Add(lake);
+				}
+				foreach(Center lake in lakes)
+				{
+					lake.Elevation = lowest;
 				}
 			}
 		}
 	}
-
-	private void RedistributeMoisture()
-        {
-            var locations = WorldGen.AppMap.Corners.Values.OrderBy(x => x.Moisture).ToArray();
-
-            for (int i = 0; i < locations.Count(); i++) 
-            {
-                locations[i].Moisture = (float) i/(locations.Count() - 1);
-            }
-        }
+	
 	private void CalculateCornerMoisture()
 	{
 		var queue = new Queue<Corner> ();
@@ -265,10 +275,7 @@ public class IslandService : IIslandService
 				{
 					double newElevation = 0.01 + corner.Elevation;
 
-//					if (!corner.Water && !adj.Water)
-//					{
-						newElevation += 1;
-//					}
+					newElevation += 1;
 
 					if (newElevation < adj.Elevation)
 					{
