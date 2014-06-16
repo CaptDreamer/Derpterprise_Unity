@@ -26,6 +26,7 @@ public class IslandService : IIslandService
 			c.Water = !InLand(c.Point); //calculate land&water corners
 		}
 
+		//Creates the Oceans
 		FixCentersFloodFillOceans ();
 
 		foreach (var c in WorldGen.AppMap.Corners.Values)
@@ -37,18 +38,25 @@ public class IslandService : IIslandService
 			c.Ocean = (c.Touches.All(x => x.Ocean)) ? true : false;
 		}
 
+		//Going up!
 		CalculateElevation ();
 
+		//Smooth the elevation map a little
 		RedistributeElevation ();
 
+		//Prolly not needed
 		CalculateDownslopes ();
 
+		//Also not needed for this game
 		CalculateWatersheds ();
 
+		//Creates the rivers
 		CreateRivers ();
 
+		//Calculates the moisture for Biome generation
 		CalculateCornerMoisture ();
-		
+
+		//Smoothes the coastline for a more islandy feel
 		Smooth1();
 
 		foreach (Center c in WorldGen.AppMap.Centers.Values)
@@ -62,6 +70,7 @@ public class IslandService : IIslandService
 			c.SetBiome();
 		}
 
+		//Put the ocean under 25, and the land above
 		FixElevations();
 	}
 
