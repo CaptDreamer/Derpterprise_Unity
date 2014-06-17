@@ -69,10 +69,14 @@ public static class WorldGen {
 	static void StartGame ()
 	{
 		//Pass the finalized map to the game
-		MainGame.fullMap = WorldGen.fullMap;
+		//MainGame.fullMap = WorldGen.fullMap;
 
+		//Save the map for the future
+		MapSave.SaveMap (WorldGen.fullMap);
+
+		Debug.Log ("Map Saved");
 		//load the game level
-		Application.LoadLevel (1);
+		//Application.LoadLevel (1);
 	}
 
 	/// <summary>
@@ -90,10 +94,11 @@ public static class WorldGen {
 			for(int j = 0; j < WorldGen.MapY; j++)
 			{	
 				//set this tile's point data correctly
-				WorldGen.fullMap.map[i,j,0].Point = new Vector2(i,j);
+				WorldGen.fullMap.GetTile(i,j,0).PointX = i;
+				WorldGen.fullMap.GetTile(i,j,0).PointY = j;
 
 				//add the tile to the empty list (will be removed if not empty)
-				empty.Add(WorldGen.fullMap.map[i,j,0]);
+				empty.Add(WorldGen.fullMap.GetTile(i,j,0));
 
 				//store the point location
 				Vector3 p = new Vector3(i, j, 0);
@@ -106,10 +111,10 @@ public static class WorldGen {
 					//also, remove this tile from the empty list as it is not empty
 					if(c.Contains(p))
 					{
-						WorldGen.fullMap.map[i,j,0].Biome = c.Biome;
-						WorldGen.fullMap.map[i,j,0].Color = c.PolygonBrush;
-						WorldGen.fullMap.map[i,j,0].Elevation = (int)(c.Elevation * 50);
-						empty.Remove(WorldGen.fullMap.map[i,j,0]);
+						WorldGen.fullMap.GetTile(i,j,0).Biome = c.Biome;
+						//WorldGen.fullMap.GetTile(i,j,0).Color = c.PolygonBrush;
+						WorldGen.fullMap.GetTile(i,j,0).Elevation = (int)(c.Elevation * 50);
+						empty.Remove(WorldGen.fullMap.GetTile(i,j,0));
 						break;
 					}
 				}
@@ -120,31 +125,31 @@ public static class WorldGen {
 		foreach(Tile tile in empty)
 		{
 			//init the distance counters
-			int countX = ((int)tile.Point.x + 1) < WorldGen.MapX ? (int)tile.Point.x + 1 : WorldGen.MapX-1;
-			int countY = ((int)tile.Point.y + 1) < WorldGen.MapY ? (int)tile.Point.y + 1 : WorldGen.MapY-1;
-			int countL = ((int)tile.Point.x - 1) >= 0 ? (int)tile.Point.x - 1 : 0;
-			int countD = ((int)tile.Point.y - 1) >= 0 ? (int)tile.Point.y - 1 : 0;
+			int countX = ((int)tile.PointX + 1) < WorldGen.MapX ? (int)tile.PointX + 1 : WorldGen.MapX-1;
+			int countY = ((int)tile.PointY + 1) < WorldGen.MapY ? (int)tile.PointY + 1 : WorldGen.MapY-1;
+			int countL = ((int)tile.PointX - 1) >= 0 ? (int)tile.PointX - 1 : 0;
+			int countD = ((int)tile.PointY - 1) >= 0 ? (int)tile.PointY - 1 : 0;
 
 			//loop through all the tiles diagonally from this one, if found a non-empty tile, grab that tiles info and make this tile like it's closest neighbour
 			while(tile.Biome == "Empty")
 			{
-				if(WorldGen.fullMap.map[countX,countY,0].Biome != "Empty")
+				if(WorldGen.fullMap.GetTile(countX,countY,0).Biome != "Empty")
 				{
-					tile.Biome = WorldGen.fullMap.map[countX,countY,0].Biome;
-					tile.Color = WorldGen.fullMap.map[countX,countY,0].Color;
-					tile.Elevation = WorldGen.fullMap.map[countX,countY,0].Elevation;
-				} else if (WorldGen.fullMap.map[countX,countD,0].Biome != "Empty") {
-					tile.Biome = WorldGen.fullMap.map[countX,countD,0].Biome;
-					tile.Color = WorldGen.fullMap.map[countX,countD,0].Color;
-					tile.Elevation = WorldGen.fullMap.map[countX,countD,0].Elevation;
-				} else if (WorldGen.fullMap.map[countL,countY,0].Biome != "Empty") {
-					tile.Biome = WorldGen.fullMap.map[countL,countY,0].Biome;
-					tile.Color = WorldGen.fullMap.map[countL,countY,0].Color;
-					tile.Elevation = WorldGen.fullMap.map[countL,countY,0].Elevation;
-				} else if (WorldGen.fullMap.map[countL,countD,0].Biome != "Empty") {
-					tile.Biome = WorldGen.fullMap.map[countL,countD,0].Biome;
-					tile.Color = WorldGen.fullMap.map[countL,countD,0].Color;
-					tile.Elevation = WorldGen.fullMap.map[countL,countD,0].Elevation;
+					tile.Biome = WorldGen.fullMap.GetTile(countX,countY,0).Biome;
+					//tile.Color = WorldGen.fullMap.GetTile(countX,countY,0).Color;
+					tile.Elevation = WorldGen.fullMap.GetTile(countX,countY,0).Elevation;
+				} else if (WorldGen.fullMap.GetTile(countX,countD,0).Biome != "Empty") {
+					tile.Biome = WorldGen.fullMap.GetTile(countX,countD,0).Biome;
+					//tile.Color = WorldGen.fullMap.GetTile(countX,countD,0).Color;
+					tile.Elevation = WorldGen.fullMap.GetTile(countX,countD,0).Elevation;
+				} else if (WorldGen.fullMap.GetTile(countL,countY,0).Biome != "Empty") {
+					tile.Biome = WorldGen.fullMap.GetTile(countL,countY,0).Biome;
+					//tile.Color = WorldGen.fullMap.GetTile(countL,countY,0).Color;
+					tile.Elevation = WorldGen.fullMap.GetTile(countL,countY,0).Elevation;
+				} else if (WorldGen.fullMap.GetTile(countL,countD,0).Biome != "Empty") {
+					tile.Biome = WorldGen.fullMap.GetTile(countL,countD,0).Biome;
+					//tile.Color = WorldGen.fullMap.GetTile(countL,countD,0).Color;
+					tile.Elevation = WorldGen.fullMap.GetTile(countL,countD,0).Elevation;
 				}
 
 				//didn't find any tiles, increase the distance by 1 tile in all directions.
@@ -165,35 +170,38 @@ public static class WorldGen {
 			for(int j = 0; j < WorldGen.MapY; j++)
 			{
 				//init the elevation
-				int elevation = WorldGen.fullMap.map[i,j,0].Elevation;
+				int elevation = WorldGen.fullMap.GetTile(i,j,0).Elevation;
 
 				//if the elevation is 0, there's nothing left to do.
 				if(elevation > 0)
 				{
 					//Copy the tile to its correct elevation
-					WorldGen.fullMap.map[i,j,elevation].Biome = WorldGen.fullMap.map[i,j,0].Biome;
-					WorldGen.fullMap.map[i,j,elevation].Point = WorldGen.fullMap.map[i,j,0].Point;
-					WorldGen.fullMap.map[i,j,elevation].Color = WorldGen.fullMap.map[i,j,0].Color;
-					WorldGen.fullMap.map[i,j,elevation].Elevation = WorldGen.fullMap.map[i,j,0].Elevation;
+					WorldGen.fullMap.GetTile(i,j,elevation).Biome = WorldGen.fullMap.GetTile(i,j,0).Biome;
+					WorldGen.fullMap.GetTile(i,j,elevation).PointX = WorldGen.fullMap.GetTile(i,j,0).PointX;
+					WorldGen.fullMap.GetTile(i,j,elevation).PointY = WorldGen.fullMap.GetTile(i,j,0).PointY;
+					//WorldGen.fullMap.GetTile(i,j,elevation).Color = WorldGen.fullMap.GetTile(i,j,0).Color;
+					WorldGen.fullMap.GetTile(i,j,elevation).Elevation = WorldGen.fullMap.GetTile(i,j,0).Elevation;
 
 					//loop through all the tiles underneath this tile and set them to underground tiles.
 					for(int z = 0; z < elevation; z++)
 					{
-						WorldGen.fullMap.map[i,j,z].Biome = "Underground";
-						WorldGen.fullMap.map[i,j,z].Color = Color.black;
-						WorldGen.fullMap.map[i,j,z].Elevation = z;
-						WorldGen.fullMap.map[i,j,z].Point = new Vector2(i,j);
+						WorldGen.fullMap.GetTile(i,j,z).Biome = "Underground";
+						//WorldGen.fullMap.GetTile(i,j,z).Color = Color.black;
+						WorldGen.fullMap.GetTile(i,j,z).Elevation = z;
+						WorldGen.fullMap.GetTile(i,j,z).PointX = i;
+						WorldGen.fullMap.GetTile(i,j,z).PointY = j;
 					}
 				}
 				//if the tile is an OceanFloor, we need to put the Ocean above it as well. loop through all the tiles above this one and set it to Ocean up to 25 (sealevel)
-				if (WorldGen.fullMap.map[i,j,elevation].Biome == "OceanFloor")
+				if (WorldGen.fullMap.GetTile(i,j,elevation).Biome == "OceanFloor")
 				{
 					for(int z = elevation + 1; z <= 25; z++)
 					{
-						WorldGen.fullMap.map[i,j,z].Biome = "Ocean";
-						WorldGen.fullMap.map[i,j,z].Color = Color.blue;
-						WorldGen.fullMap.map[i,j,z].Elevation = z;
-						WorldGen.fullMap.map[i,j,z].Point = new Vector2(i,j);
+						WorldGen.fullMap.GetTile(i,j,z).Biome = "Ocean";
+						//WorldGen.fullMap.GetTile(i,j,z).Color = Color.blue;
+						WorldGen.fullMap.GetTile(i,j,z).Elevation = z;
+						WorldGen.fullMap.GetTile(i,j,z).PointX = i;
+						WorldGen.fullMap.GetTile(i,j,z).PointY = j;
 					}
 				}
 			}

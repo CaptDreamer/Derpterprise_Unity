@@ -9,6 +9,8 @@ public class TileMapController : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
+		//Load the last saved map
+		MainGame.fullMap = MapSave.LoadMap ();
 		MainGame.tileMap = tileMap;
 		BuildLevel (25);
 		MainGame.Level = 25;
@@ -27,7 +29,7 @@ public class TileMapController : MonoBehaviour {
 		{
 			for(int j = 0; j < MainGame.fullMap.Height; j++)
 			{
-				int tile = tileMap.SpriteCollectionInst.GetSpriteIdByName(MainGame.fullMap.map[i,j,level].Biome + "-square");
+				int tile = tileMap.SpriteCollectionInst.GetSpriteIdByName(MainGame.fullMap.GetTile(i, j, level).Biome + "-square");
 				tileMap.SetTile(i,j,0,tile);
 				//tileMap.ColorChannel.SetColor(i,j,MainGame.fullMap.map[i,j,level].Color);
 			}
