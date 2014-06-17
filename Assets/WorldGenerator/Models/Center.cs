@@ -34,7 +34,7 @@ public class Center : IEquatable<Center>, IMapItem {
 		{
 			if (value == "Ocean")
 				PolygonBrush = new Color(  54/255f,  54/255f, 97/255f, 255/255f );
-			if (value == "Ocean Floor")
+			if (value == "OceanFloor")
 				PolygonBrush = new Color(74/255f,74/255f,117/255f,255/255f);
 			else if (value == "Marsh")
 				PolygonBrush = new Color(196/255f,204/255f,187/255f ,255/255f);

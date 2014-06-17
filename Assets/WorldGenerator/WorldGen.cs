@@ -3,25 +3,30 @@ using System.Collections;
 using System.Collections.Generic;
 using BenTools.Mathematics;
 
-public class WorldGen : MonoBehaviour {
+public static class WorldGen {
 
-	public GameObject chunk;
-	public GameObject[,,] chunks;
-	public int chunkSize=16;
+	//variable for map size
+	public static int width { get; set; }
+	public static int height { get; set; }
+	public static int MapX { get; set; }
+	public static int MapY { get; set; }
 
-	public static int width;
-	int height;
-	int MapX, MapY;
+	//complexity of map
+	public static int DotCount { get; set; }
 
-	private IIslandService IslandHandler;
+	//Island generator
+	private static IIslandService IslandHandler;
+	
+	//Voronoi Graph Support
+	public static VoronoiGraph voronoiMap { get; set; }
 
-	public int DotCount;
+	//Rasterized map support
+	public static GridMap fullMap { get; set; }
 
-	VoronoiGraph voronoiMap;
-	GridMap fullMap;
-
+	//Vector map support
 	public static Map AppMap { get; set; }
 
+	//Clear previous map info
 	public static void ResetMap()
 	{
 		WorldGen.AppMap.Centers.Clear();
@@ -29,174 +34,226 @@ public class WorldGen : MonoBehaviour {
 		WorldGen.AppMap.Corners.Clear();
 	}
 		
-	// Use this for initialization
-	void Start () {
-		width = 250;
-		height = width;
+	/// <summary>
+	/// Initializes the <see cref="WorldGen"/> class.
+	/// </summary>
+	public static void Start () {
+
+		//Set the world to 250x250
+		WorldGen.width = 250;
+		WorldGen.height = WorldGen.width;
+
+		//Set the Complexity to 1000
+		WorldGen.DotCount = 1000;
+
+		//Init the vector map
 		WorldGen.AppMap = null;
 		WorldGen.AppMap = new Map();
+
+		//Create the Voronoi Graph
 		CreateVoronoiGraph();
+
+		//Create the Vector Map
 		CleanUpGraph(true);
+
+		//Create the Rasterized Map
 		CreateGridMap ();
-		ExtraChunky ();
+
+		//Load the actual game scene
+		StartGame ();
 	}
 
-	void ExtraChunky()
+	/// <summary>
+	/// Starts the game.
+	/// </summary>
+	static void StartGame ()
 	{
-		chunks=new GameObject[Mathf.FloorToInt(width/chunkSize),
-		                      Mathf.FloorToInt(width/chunkSize),
-		                      Mathf.FloorToInt(50/chunkSize)];
-		
-		for (int x=0; x<chunks.GetLength(0); x++)
-		{
-			for (int y=0; y<chunks.GetLength(1); y++)
-			{
-				for (int z=0; z<chunks.GetLength(2); z++)
-				{
-					chunks[x,y,z]= Instantiate(chunk,
-					                           new Vector3(x*chunkSize,y*chunkSize,z*chunkSize),
-					                           new Quaternion(0,0,0,0)) as GameObject;
-					
-					Chunk newChunkScript= chunks[x,y,z].GetComponent("Chunk") as Chunk;
-			   
-					newChunkScript.map=fullMap;
-					newChunkScript.chunkSize=chunkSize;
-					newChunkScript.chunkX=x*chunkSize;
-					newChunkScript.chunkY=y*chunkSize;
-					newChunkScript.chunkZ=z*chunkSize;
-					newChunkScript.GenerateMesh();
-				}
-			}
-		}
+		//Pass the finalized map to the game
+		MainGame.fullMap = WorldGen.fullMap;
+
+		//load the game level
+		Application.LoadLevel (1);
 	}
 
-	void CreateGridMap()
+	/// <summary>
+	/// Creates the grid map.
+	/// </summary>
+	static void CreateGridMap()
 	{
-		fullMap = new GridMap (MapX, MapY);
+		//init the worldmap and the tilesupport
+		WorldGen.fullMap = new GridMap (WorldGen.MapX, WorldGen.MapY);
 		List<Tile> empty = new List<Tile> ();
 
-		for(int i = 0; i < MapX; i++)
+		//loop through all the tiles on the bottom floor
+		for(int i = 0; i < WorldGen.MapX; i++)
 		{
-			for(int j = 0; j < MapY; j++)
+			for(int j = 0; j < WorldGen.MapY; j++)
 			{	
-				fullMap.map[i,j,0].Point = new Vector2(i,j);
-				empty.Add(fullMap.map[i,j,0]);
+				//set this tile's point data correctly
+				WorldGen.fullMap.map[i,j,0].Point = new Vector2(i,j);
+
+				//add the tile to the empty list (will be removed if not empty)
+				empty.Add(WorldGen.fullMap.map[i,j,0]);
+
+				//store the point location
 				Vector3 p = new Vector3(i, j, 0);
+
+				//Loop through all the map centers to see if this tile is in any of them
 				foreach(Center c in WorldGen.AppMap.Centers.Values)
 				{
+
+					//if it is, set its data to that biome and elevation and go to the next tile (no need to loop through more polys)
+					//also, remove this tile from the empty list as it is not empty
 					if(c.Contains(p))
 					{
-						fullMap.map[i,j,0].Biome = c.Biome;
-						fullMap.map[i,j,0].Color = c.PolygonBrush;
-						fullMap.map[i,j,0].Elevation = (int)(c.Elevation * 50);
-						empty.Remove(fullMap.map[i,j,0]);
+						WorldGen.fullMap.map[i,j,0].Biome = c.Biome;
+						WorldGen.fullMap.map[i,j,0].Color = c.PolygonBrush;
+						WorldGen.fullMap.map[i,j,0].Elevation = (int)(c.Elevation * 50);
+						empty.Remove(WorldGen.fullMap.map[i,j,0]);
 						break;
 					}
 				}
 			}
 		}
 
+		//all the tiles in here are likely Ocean tiles on the border, we'll get the nearest tiles info diagonally from this one.
 		foreach(Tile tile in empty)
 		{
-			int countX = ((int)tile.Point.x + 1) < MapX ? (int)tile.Point.x + 1 : MapX-1;
-			int countY = ((int)tile.Point.y + 1) < MapY ? (int)tile.Point.y + 1 : MapY-1;
+			//init the distance counters
+			int countX = ((int)tile.Point.x + 1) < WorldGen.MapX ? (int)tile.Point.x + 1 : WorldGen.MapX-1;
+			int countY = ((int)tile.Point.y + 1) < WorldGen.MapY ? (int)tile.Point.y + 1 : WorldGen.MapY-1;
 			int countL = ((int)tile.Point.x - 1) >= 0 ? (int)tile.Point.x - 1 : 0;
 			int countD = ((int)tile.Point.y - 1) >= 0 ? (int)tile.Point.y - 1 : 0;
 
+			//loop through all the tiles diagonally from this one, if found a non-empty tile, grab that tiles info and make this tile like it's closest neighbour
 			while(tile.Biome == "Empty")
 			{
-				if(fullMap.map[countX,countY,0].Biome != "Empty")
+				if(WorldGen.fullMap.map[countX,countY,0].Biome != "Empty")
 				{
-					tile.Biome = fullMap.map[countX,countY,0].Biome;
-					tile.Color = fullMap.map[countX,countY,0].Color;
-					tile.Elevation = fullMap.map[countX,countY,0].Elevation;
-				} else if (fullMap.map[countX,countD,0].Biome != "Empty") {
-					tile.Biome = fullMap.map[countX,countD,0].Biome;
-					tile.Color = fullMap.map[countX,countD,0].Color;
-					tile.Elevation = fullMap.map[countX,countD,0].Elevation;
-				} else if (fullMap.map[countL,countY,0].Biome != "Empty") {
-					tile.Biome = fullMap.map[countL,countY,0].Biome;
-					tile.Color = fullMap.map[countL,countY,0].Color;
-					tile.Elevation = fullMap.map[countL,countY,0].Elevation;
-				} else if (fullMap.map[countL,countD,0].Biome != "Empty") {
-					tile.Biome = fullMap.map[countL,countD,0].Biome;
-					tile.Color = fullMap.map[countL,countD,0].Color;
-					tile.Elevation = fullMap.map[countL,countD,0].Elevation;
+					tile.Biome = WorldGen.fullMap.map[countX,countY,0].Biome;
+					tile.Color = WorldGen.fullMap.map[countX,countY,0].Color;
+					tile.Elevation = WorldGen.fullMap.map[countX,countY,0].Elevation;
+				} else if (WorldGen.fullMap.map[countX,countD,0].Biome != "Empty") {
+					tile.Biome = WorldGen.fullMap.map[countX,countD,0].Biome;
+					tile.Color = WorldGen.fullMap.map[countX,countD,0].Color;
+					tile.Elevation = WorldGen.fullMap.map[countX,countD,0].Elevation;
+				} else if (WorldGen.fullMap.map[countL,countY,0].Biome != "Empty") {
+					tile.Biome = WorldGen.fullMap.map[countL,countY,0].Biome;
+					tile.Color = WorldGen.fullMap.map[countL,countY,0].Color;
+					tile.Elevation = WorldGen.fullMap.map[countL,countY,0].Elevation;
+				} else if (WorldGen.fullMap.map[countL,countD,0].Biome != "Empty") {
+					tile.Biome = WorldGen.fullMap.map[countL,countD,0].Biome;
+					tile.Color = WorldGen.fullMap.map[countL,countD,0].Color;
+					tile.Elevation = WorldGen.fullMap.map[countL,countD,0].Elevation;
 				}
 
-				countX = (countX + 1) < MapX ? countX + 1 : MapX-1;
-				countY = (countY + 1) < MapY ? countY + 1 : MapY-1;
+				//didn't find any tiles, increase the distance by 1 tile in all directions.
+				countX = (countX + 1) < WorldGen.MapX ? countX + 1 : WorldGen.MapX-1;
+				countY = (countY + 1) < WorldGen.MapY ? countY + 1 : WorldGen.MapY-1;
 				countL = (countL - 1) >= 0 ? countL - 1 : 0;
 				countD = (countD - 1) >= 0 ? countD - 1 : 0;
-				
-				if(countX == MapX-1 && countY == MapY-1 && countL == 0 && countD == 0)
+
+				//if we've reached the edges of the map in all directions, this tile is broken (Should not happen)
+				if(countX == WorldGen.MapX-1 && countY == WorldGen.MapY-1 && countL == 0 && countD == 0)
 					tile.Biome = "Broken";
 			}
 		}
 
-		for(int i = 0; i < MapX; i++)
+		//loop through all the tiles and set their elevation accordingly.
+		for(int i = 0; i < WorldGen.MapX; i++)
 		{
-			for(int j = 0; j < MapY; j++)
+			for(int j = 0; j < WorldGen.MapY; j++)
 			{
-				int elevation = fullMap.map[i,j,0].Elevation;
+				//init the elevation
+				int elevation = WorldGen.fullMap.map[i,j,0].Elevation;
+
+				//if the elevation is 0, there's nothing left to do.
 				if(elevation > 0)
 				{
-					fullMap.map[i,j,elevation].Biome = fullMap.map[i,j,0].Biome;
-					fullMap.map[i,j,elevation].Point = fullMap.map[i,j,0].Point;
-					fullMap.map[i,j,elevation].Color = fullMap.map[i,j,0].Color;
-					fullMap.map[i,j,elevation].Elevation = fullMap.map[i,j,0].Elevation;
+					//Copy the tile to its correct elevation
+					WorldGen.fullMap.map[i,j,elevation].Biome = WorldGen.fullMap.map[i,j,0].Biome;
+					WorldGen.fullMap.map[i,j,elevation].Point = WorldGen.fullMap.map[i,j,0].Point;
+					WorldGen.fullMap.map[i,j,elevation].Color = WorldGen.fullMap.map[i,j,0].Color;
+					WorldGen.fullMap.map[i,j,elevation].Elevation = WorldGen.fullMap.map[i,j,0].Elevation;
+
+					//loop through all the tiles underneath this tile and set them to underground tiles.
 					for(int z = 0; z < elevation; z++)
 					{
-						fullMap.map[i,j,z].Biome = "Underground";
-						fullMap.map[i,j,z].Color = Color.black;
+						WorldGen.fullMap.map[i,j,z].Biome = "Underground";
+						WorldGen.fullMap.map[i,j,z].Color = Color.black;
+						WorldGen.fullMap.map[i,j,z].Elevation = z;
+						WorldGen.fullMap.map[i,j,z].Point = new Vector2(i,j);
 					}
-					if (fullMap.map[i,j,elevation].Biome == "OceanFloor")
+				}
+				//if the tile is an OceanFloor, we need to put the Ocean above it as well. loop through all the tiles above this one and set it to Ocean up to 25 (sealevel)
+				if (WorldGen.fullMap.map[i,j,elevation].Biome == "OceanFloor")
+				{
+					for(int z = elevation + 1; z <= 25; z++)
 					{
-						for(int z = elevation + 1; z <= 25; z++)
-						{
-							fullMap.map[i,j,z].Biome = "Ocean";
-							fullMap.map[i,j,z].Color = Color.blue;
-						}
+						WorldGen.fullMap.map[i,j,z].Biome = "Ocean";
+						WorldGen.fullMap.map[i,j,z].Color = Color.blue;
+						WorldGen.fullMap.map[i,j,z].Elevation = z;
+						WorldGen.fullMap.map[i,j,z].Point = new Vector2(i,j);
 					}
 				}
 			}
 		}
 	}
+//
+//	/// <summary>
+//	/// Checks if inside.
+//	/// </summary>
+//	/// <returns><c>true</c>, if if inside was checked, <c>false</c> otherwise.</returns>
+//	/// <param name="point">Point.</param>
+//	static bool checkIfInside(Vector3 point)
+//	{
+//		Vector3 direction = new Vector3 (0, 1, 0);
+//
+//		if(Physics.Raycast(point, direction, Mathf.Infinity) &&
+//		   Physics.Raycast(point, -direction, Mathf.Infinity)) {
+//			return true;
+//		}
+//
+//		else return false;
+//	}
 
-	bool checkIfInside(Vector3 point)
+	/// <summary>
+	/// Creates the voronoi graph.
+	/// </summary>
+	static void CreateVoronoiGraph() 
 	{
-		Vector3 direction = new Vector3 (0, 1, 0);
+		//Set map sizes
+		WorldGen.MapX = WorldGen.width;
+		WorldGen.MapY = WorldGen.height;
 
-		if(Physics.Raycast(point, direction, Mathf.Infinity) &&
-		   Physics.Raycast(point, -direction, Mathf.Infinity)) {
-			return true;
-		}
+		//Create the IslandHandler
+		WorldGen.IslandHandler = new IslandService (WorldGen.MapX, WorldGen.MapY);
 
-		else return false;
-	}
-
-	void CreateVoronoiGraph() 
-	{
-		MapX = width;
-		MapY = height;
-		IslandHandler = new IslandService (MapX, MapY);
-
+		//init the points hash
 		var points = new HashSet<BenTools.Mathematics.Vector>();
-		for(int i = 0; i < DotCount; i++)
+
+		//for each dot in the complexity setting create random dots that are within the map and add them to the points list
+		for(int i = 0; i < WorldGen.DotCount; i++)
 		{
-			points.Add(new BenTools.Mathematics.Vector(Random.Range(0,MapX), Random.Range(0,MapY)));
+			points.Add(new BenTools.Mathematics.Vector(Random.Range(0,WorldGen.MapX), Random.Range(0,WorldGen.MapY)));
 		}
 
-		voronoiMap = null;
+		//init the map
+		WorldGen.voronoiMap = null;
+
+		//iterate on the graph 3 times (more is square, less is chaotic)
 		for(int i = 0; i < 3; i++)
 		{
-			voronoiMap = Fortune.ComputeVoronoiGraph(points);
+			//set the map to the points by computing the graph
+			WorldGen.voronoiMap = Fortune.ComputeVoronoiGraph(points);
+
+			//for each point in the list, do some error checking and reprocessing
 			foreach(BenTools.Mathematics.Vector vector in points)
 			{
 				double v0 = 0.0d;
 				double v1 = 0.0d;
 				int say = 0;
-				foreach(VoronoiEdge edge in voronoiMap.Edges)
+				foreach(VoronoiEdge edge in WorldGen.voronoiMap.Edges)
 				{
 					if(edge.LeftData == vector || edge.RightData == vector)
 					{
@@ -208,26 +265,33 @@ public class WorldGen : MonoBehaviour {
 					}
 				}
 
-				if (((v0 / say) < MapX) && ((v0 / say) > 0))
+				if (((v0 / say) < WorldGen.MapX) && ((v0 / say) > 0))
 				{
 					vector[0] = v0 / say;
 				}
 
-				if (((v1 / say) < MapY) && ((v1 / say) > 0))
+				if (((v1 / say) < WorldGen.MapY) && ((v1 / say) > 0))
 				{
 					vector[1] = v1 / say;
 				}
 			}
 		}
 
-		voronoiMap = Fortune.ComputeVoronoiGraph(points);
+		//after 3 runs our grid should be good and we can save the final map
+		WorldGen.voronoiMap = Fortune.ComputeVoronoiGraph(points);
 	}
 
-	void CleanUpGraph(bool fix = false)
+	/// <summary>
+	/// Create the vector map from the voronoi information
+	/// </summary>
+	/// <param name="fix">If set to <c>true</c> fix.</param>
+	static void CleanUpGraph(bool fix = false)
 	{
+		//initialize the factory
 		IFactory fact = new MapItemFactory();
-		
-		foreach (VoronoiEdge edge in voronoiMap.Edges)
+
+		//for all the edges, create corners and centers
+		foreach (VoronoiEdge edge in WorldGen.voronoiMap.Edges)
 		{		
 
 			if (fix)
@@ -266,7 +330,8 @@ public class WorldGen : MonoBehaviour {
 			c2.AddTouches(cntrLeft);
 			c2.AddTouches(cntrRight);
 		}
-		
+
+
 		foreach (Corner q in WorldGen.AppMap.Corners.Values)
 		{
 		
@@ -284,10 +349,16 @@ public class WorldGen : MonoBehaviour {
 			}
 		}
 
-		IslandHandler.CreateIsland();
+		//Once the vector grid is created, build the island from the datapoints
+		WorldGen.IslandHandler.CreateIsland();
 	}
 
-	private bool FixPoints(VoronoiEdge edge)
+	/// <summary>
+	/// Fixs the points.
+	/// </summary>
+	/// <returns><c>true</c>, if points was fixed, <c>false</c> otherwise.</returns>
+	/// <param name="edge">Edge.</param>
+	static private bool FixPoints(VoronoiEdge edge)
 	{
 		double x1 = edge.VVertexA[0];
 		double y1 = edge.VVertexA[1];
@@ -365,31 +436,31 @@ public class WorldGen : MonoBehaviour {
 						if(WorldGen.width - x3 > y3)
 						{
 							i = b;
-							if (i > 0 && i < MapY)
+							if (i > 0 && i < WorldGen.MapY)
 								edge.VVertexB = new BenTools.Mathematics.Vector(0, i);
 							
 						}
 						else
 						{
-							i = (MapX - b) / slope;
-							if (i > 0 && i < MapY)
-								edge.VVertexB = new BenTools.Mathematics.Vector(i, MapY);
+							i = (WorldGen.MapX - b) / slope;
+							if (i > 0 && i < WorldGen.MapY)
+								edge.VVertexB = new BenTools.Mathematics.Vector(i, WorldGen.MapY);
 							
 						}
 					}
 					else
 					{
-						if (MapX - x3 > y3)
+						if (WorldGen.MapX - x3 > y3)
 						{
 							i = (-b / slope);
-							if (i > 0 && i < MapX)
+							if (i > 0 && i < WorldGen.MapX)
 								edge.VVertexB = new BenTools.Mathematics.Vector(i, 0);
 						}
 						else
 						{
-							i = (MapX * slope) + b;
-							if (i > 0 && i < width)
-								edge.VVertexB = new BenTools.Mathematics.Vector(MapX, i);
+							i = (WorldGen.MapX * slope) + b;
+							if (i > 0 && i < WorldGen.width)
+								edge.VVertexB = new BenTools.Mathematics.Vector(WorldGen.MapX, i);
 							
 						}
 					}				
@@ -399,11 +470,17 @@ public class WorldGen : MonoBehaviour {
 		}
 		return false;
 	}
-	
-	private bool DotInMap(double x, double y)
+
+	/// <summary>
+	/// Check to see if the dot is in the map
+	/// </summary>
+	/// <returns><c>true</c>, if in map was doted, <c>false</c> otherwise.</returns>
+	/// <param name="x">The x coordinate.</param>
+	/// <param name="y">The y coordinate.</param>
+	static private bool DotInMap(double x, double y)
 	{
 		if (x == double.NaN || y == double.NaN)
 			return false;
-		return (x > 0 && x < MapX) && (y > 0 && y < MapY);
+		return (x > 0 && x < WorldGen.MapX) && (y > 0 && y < WorldGen.MapY);
 	}
 }
