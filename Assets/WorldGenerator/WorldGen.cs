@@ -184,17 +184,16 @@ public static class WorldGen {
 						WorldGen.fullMap.map[i,j,z].Elevation = z;
 						WorldGen.fullMap.map[i,j,z].Point = new Vector2(i,j);
 					}
-
-					//if the tile is an OceanFloor, we need to put the Ocean above it as well. loop through all the tiles above this one and set it to Ocean up to 25 (sealevel)
-					if (WorldGen.fullMap.map[i,j,elevation].Biome == "OceanFloor")
+				}
+				//if the tile is an OceanFloor, we need to put the Ocean above it as well. loop through all the tiles above this one and set it to Ocean up to 25 (sealevel)
+				if (WorldGen.fullMap.map[i,j,elevation].Biome == "OceanFloor")
+				{
+					for(int z = elevation + 1; z <= 25; z++)
 					{
-						for(int z = elevation + 1; z <= 25; z++)
-						{
-							WorldGen.fullMap.map[i,j,z].Biome = "Ocean";
-							WorldGen.fullMap.map[i,j,z].Color = Color.blue;
-							WorldGen.fullMap.map[i,j,z].Elevation = z;
-							WorldGen.fullMap.map[i,j,z].Point = new Vector2(i,j);
-						}
+						WorldGen.fullMap.map[i,j,z].Biome = "Ocean";
+						WorldGen.fullMap.map[i,j,z].Color = Color.blue;
+						WorldGen.fullMap.map[i,j,z].Elevation = z;
+						WorldGen.fullMap.map[i,j,z].Point = new Vector2(i,j);
 					}
 				}
 			}

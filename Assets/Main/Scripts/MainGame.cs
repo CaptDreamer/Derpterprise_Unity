@@ -5,6 +5,7 @@ public static class MainGame {
 
 	static public GridMap fullMap;
 	static public tk2dTileMap tileMap;
+	static public int Level { get; set; }
 
 	static MainGame()
 	{
