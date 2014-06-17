@@ -37,7 +37,7 @@ public class CameraControl : MonoBehaviour {
 			int xTile;
 			int yTile;
 			MainGame.tileMap.GetTileAtPosition(cam.ScreenToWorldPoint(Input.mousePosition), out xTile, out yTile);
-			var tile = MainGame.fullMap.map[xTile, yTile, MainGame.Level];
+			var tile = MainGame.fullMap.GetTile(xTile, yTile, MainGame.Level);
 			Debug.Log(tile.Biome);
 		}
 	}
