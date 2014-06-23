@@ -76,7 +76,7 @@ public static class WorldGen {
 
 		Debug.Log ("Map Saved");
 		//load the game level
-		//Application.LoadLevel (1);
+		Application.LoadLevel (1);
 	}
 
 	/// <summary>
@@ -112,7 +112,6 @@ public static class WorldGen {
 					if(c.Contains(p))
 					{
 						WorldGen.fullMap.GetTile(i,j,0).Biome = c.Biome;
-						//WorldGen.fullMap.GetTile(i,j,0).Color = c.PolygonBrush;
 						WorldGen.fullMap.GetTile(i,j,0).Elevation = (int)(c.Elevation * 50);
 						empty.Remove(WorldGen.fullMap.GetTile(i,j,0));
 						break;
@@ -136,19 +135,15 @@ public static class WorldGen {
 				if(WorldGen.fullMap.GetTile(countX,countY,0).Biome != "Empty")
 				{
 					tile.Biome = WorldGen.fullMap.GetTile(countX,countY,0).Biome;
-					//tile.Color = WorldGen.fullMap.GetTile(countX,countY,0).Color;
 					tile.Elevation = WorldGen.fullMap.GetTile(countX,countY,0).Elevation;
 				} else if (WorldGen.fullMap.GetTile(countX,countD,0).Biome != "Empty") {
 					tile.Biome = WorldGen.fullMap.GetTile(countX,countD,0).Biome;
-					//tile.Color = WorldGen.fullMap.GetTile(countX,countD,0).Color;
 					tile.Elevation = WorldGen.fullMap.GetTile(countX,countD,0).Elevation;
 				} else if (WorldGen.fullMap.GetTile(countL,countY,0).Biome != "Empty") {
 					tile.Biome = WorldGen.fullMap.GetTile(countL,countY,0).Biome;
-					//tile.Color = WorldGen.fullMap.GetTile(countL,countY,0).Color;
 					tile.Elevation = WorldGen.fullMap.GetTile(countL,countY,0).Elevation;
 				} else if (WorldGen.fullMap.GetTile(countL,countD,0).Biome != "Empty") {
 					tile.Biome = WorldGen.fullMap.GetTile(countL,countD,0).Biome;
-					//tile.Color = WorldGen.fullMap.GetTile(countL,countD,0).Color;
 					tile.Elevation = WorldGen.fullMap.GetTile(countL,countD,0).Elevation;
 				}
 
@@ -177,19 +172,14 @@ public static class WorldGen {
 				{
 					//Copy the tile to its correct elevation
 					WorldGen.fullMap.GetTile(i,j,elevation).Biome = WorldGen.fullMap.GetTile(i,j,0).Biome;
-					WorldGen.fullMap.GetTile(i,j,elevation).PointX = WorldGen.fullMap.GetTile(i,j,0).PointX;
-					WorldGen.fullMap.GetTile(i,j,elevation).PointY = WorldGen.fullMap.GetTile(i,j,0).PointY;
-					//WorldGen.fullMap.GetTile(i,j,elevation).Color = WorldGen.fullMap.GetTile(i,j,0).Color;
 					WorldGen.fullMap.GetTile(i,j,elevation).Elevation = WorldGen.fullMap.GetTile(i,j,0).Elevation;
 
 					//loop through all the tiles underneath this tile and set them to underground tiles.
 					for(int z = 0; z < elevation; z++)
-					{
-						WorldGen.fullMap.GetTile(i,j,z).Biome = "Underground";
-						//WorldGen.fullMap.GetTile(i,j,z).Color = Color.black;
+					{	
+						WorldGen.fullMap.GetTile(i,j,z).Biome = WorldGen.fullMap.GetTile(i,j,elevation).Biome;
+						WorldGen.fullMap.GetTile(i,j,z).Underground = true;
 						WorldGen.fullMap.GetTile(i,j,z).Elevation = z;
-						WorldGen.fullMap.GetTile(i,j,z).PointX = i;
-						WorldGen.fullMap.GetTile(i,j,z).PointY = j;
 					}
 				}
 				//if the tile is an OceanFloor, we need to put the Ocean above it as well. loop through all the tiles above this one and set it to Ocean up to 25 (sealevel)
@@ -198,32 +188,36 @@ public static class WorldGen {
 					for(int z = elevation + 1; z <= 25; z++)
 					{
 						WorldGen.fullMap.GetTile(i,j,z).Biome = "Ocean";
-						//WorldGen.fullMap.GetTile(i,j,z).Color = Color.blue;
 						WorldGen.fullMap.GetTile(i,j,z).Elevation = z;
-						WorldGen.fullMap.GetTile(i,j,z).PointX = i;
-						WorldGen.fullMap.GetTile(i,j,z).PointY = j;
+					}
+				}
+			}
+		}
+
+		//loop through the map and set the blocked and material (Future random ore and stuff here)
+		for(int i = 0; i < WorldGen.MapX; i++)
+		{
+			for(int j = 0; j < WorldGen.MapY; j++)
+			{
+				for(int k = 0; k < 50; k++)
+				{
+					Tile tile = WorldGen.fullMap.GetTile(i,j,k);
+
+					tile.PointX = i;
+					tile.PointY = j;
+					tile.Elevation = k;
+
+					if(WorldGen.fullMap.GetTile(i,j,k).Underground || WorldGen.fullMap.GetTile(i,j,k).Biome == "Ocean")
+					{
+						tile.IsBlocked = true;
+						tile.Mineral = "Dirt";
+					} else {
+						tile.Mineral = "Grass";
 					}
 				}
 			}
 		}
 	}
-//
-//	/// <summary>
-//	/// Checks if inside.
-//	/// </summary>
-//	/// <returns><c>true</c>, if if inside was checked, <c>false</c> otherwise.</returns>
-//	/// <param name="point">Point.</param>
-//	static bool checkIfInside(Vector3 point)
-//	{
-//		Vector3 direction = new Vector3 (0, 1, 0);
-//
-//		if(Physics.Raycast(point, direction, Mathf.Infinity) &&
-//		   Physics.Raycast(point, -direction, Mathf.Infinity)) {
-//			return true;
-//		}
-//
-//		else return false;
-//	}
 
 	/// <summary>
 	/// Creates the voronoi graph.

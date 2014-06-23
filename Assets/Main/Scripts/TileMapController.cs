@@ -9,16 +9,21 @@ public class TileMapController : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		//Load the last saved map
-		MainGame.fullMap = MapSave.LoadMap ();
-		MainGame.tileMap = tileMap;
-		BuildLevel (25);
-		MainGame.Level = 25;
+
 	}
 	
 	// Update is called once per frame
 	void Update () {
 	
+	}
+
+	public void StartGame()
+	{
+		//Load the last saved map
+		MainGame.fullMap = MapSave.LoadMap ();
+		MainGame.tileMap = tileMap;
+		BuildLevel (25);
+		MainGame.Level = 25;
 	}
 
 	public void BuildLevel(int level)
@@ -29,9 +34,14 @@ public class TileMapController : MonoBehaviour {
 		{
 			for(int j = 0; j < MainGame.fullMap.Height; j++)
 			{
-				int tile = tileMap.SpriteCollectionInst.GetSpriteIdByName(MainGame.fullMap.GetTile(i, j, level).Biome + "-square");
-				tileMap.SetTile(i,j,0,tile);
-				//tileMap.ColorChannel.SetColor(i,j,MainGame.fullMap.map[i,j,level].Color);
+				if(MainGame.fullMap.GetTile(i, j, level).Underground)
+				{
+					int tile = tileMap.SpriteCollectionInst.GetSpriteIdByName("Underground-square");
+					tileMap.SetTile(i,j,0,tile);
+				} else {
+					int tile = tileMap.SpriteCollectionInst.GetSpriteIdByName(MainGame.fullMap.GetTile(i, j, level).Biome + "-square");
+					tileMap.SetTile(i,j,0,tile);
+				}
 			}
 		}
 
@@ -48,6 +58,21 @@ public class TileMapController : MonoBehaviour {
 	{
 		BuildLevel (level - 1);
 		//MainGame.Level--;
+	}
+
+	public void DrawWorldObj()
+	{
+		foreach(WorldObject obj in MainGame.characters)
+		{
+			//Debug.Log(obj.PointX + "," + obj.PointY);
+			tileMap.SetTile(obj.PointX, obj.PointY, 1, 20);
+		}
+		tileMap.Build ();
+	}
+
+	public void ClearPrevLoc(int x, int y)
+	{
+		tileMap.ClearTile (x, y, 1);
 	}
 
 }

@@ -6,6 +6,7 @@ public class CameraControl : MonoBehaviour {
 	Camera cam;
 	public int speed = 6;
 	public TileMapController mapControl;
+	public GUIText guiTextOB;
 
 	// Use this for initialization
 	void Start () {
@@ -32,13 +33,19 @@ public class CameraControl : MonoBehaviour {
 			Debug.Log("Going Down");
 			mapControl.DownLevel();
 		}
-		if(Input.GetMouseButtonDown(0))
-		{
-			int xTile;
-			int yTile;
-			MainGame.tileMap.GetTileAtPosition(cam.ScreenToWorldPoint(Input.mousePosition), out xTile, out yTile);
-			var tile = MainGame.fullMap.GetTile(xTile, yTile, MainGame.Level);
-			Debug.Log(tile.Biome);
-		}
+
+		int xTile;
+		int yTile;
+		MainGame.tileMap.GetTileAtPosition(cam.ScreenToWorldPoint(Input.mousePosition), out xTile, out yTile);
+		var tile = MainGame.fullMap.GetTile(xTile, yTile, MainGame.Level);
+		string guiString = "Biome: " +tile.Biome + "\n\r" +
+						   "Material: " + tile.Mineral + "\n\r" +
+						   "Underground? " + tile.Underground + "\n\r" +
+						   "Blocked? " + tile.IsBlocked + "\n\r" +
+						   "Location: " + tile.PointX + ", " + tile.PointY + "\n\r" +
+						   "Elevation: " + tile.Elevation;
+		guiTextOB.text = guiString;
+		guiTextOB.transform.position = cam.ScreenToViewportPoint(Input.mousePosition);
+
 	}
 }
